@@ -15,9 +15,7 @@ public class CellView extends JPanel {
     public static final int CELL_SIZE = 65;
     public static final float CELL_WIDTH_MOD = 0.866025f;
 
-    private static final String ROBOT_LETTER = "R";
     private static final String EXIT_LETTER = "ET";
-    private static final String KEY_LETTER = "K";
 
     private static final float[] xHexagonPoints = new float[]{
             0f, CELL_WIDTH_MOD, CELL_WIDTH_MOD, 0f, -CELL_WIDTH_MOD, -CELL_WIDTH_MOD, 0f
@@ -27,9 +25,11 @@ public class CellView extends JPanel {
     };
 
     private final Cell cell;
+    private final CellObjectView cellObjectView;
 
     public CellView(Cell cell) {
         this.cell = cell;
+        cellObjectView = new CellObjectView(cell);
 
         setPreferredSize(new Dimension(CELL_SIZE, CELL_SIZE));
         setBackground(new Color(0, 0, 0, 0));
@@ -42,12 +42,8 @@ public class CellView extends JPanel {
         Graphics2D gr2d = (Graphics2D) g;
         drawHexagon(gr2d);
 
-        CellObject cellObject = cell.getContainedObject();
-        if (cellObject != null){
-            drawString(gr2d, cellObject instanceof Robot ? ROBOT_LETTER : cellObject instanceof Key ? KEY_LETTER : "");
-        }
-        else if (cell instanceof ExitCell){
-            drawString(gr2d, EXIT_LETTER);
+        if (!cellObjectView.paint(gr2d) && cell instanceof ExitCell){
+            drawString(gr2d);
         }
     }
 
@@ -68,15 +64,15 @@ public class CellView extends JPanel {
         );
     }
 
-    private void drawString(Graphics2D gr2d, String letter){
+    private void drawString(Graphics2D gr2d){
         gr2d.setColor(Color.black);
         gr2d.setFont(new Font("Microsoft JhengHei Light", Font.BOLD, 20));
 
         FontMetrics fm = gr2d.getFontMetrics();
-        int msgWidth = fm.stringWidth(letter);
+        int msgWidth = fm.stringWidth(EXIT_LETTER);
         int msgHeight = fm.getHeight();
 
-        gr2d.drawString(letter, (CELL_SIZE - msgWidth)/2, CELL_SIZE / 2 + msgHeight/4);
+        gr2d.drawString(EXIT_LETTER, (CELL_SIZE - msgWidth)/2, CELL_SIZE / 2 + msgHeight/4);
     }
 
     private int[] getPolygonPoints(boolean isX, float scale){
