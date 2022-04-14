@@ -1,10 +1,10 @@
 package robotgame.view;
 
 import robotgame.model.cell.Cell;
+import robotgame.model.cellobject.Key;
 import robotgame.model.cell.ColoredCell;
 import robotgame.model.cell.ExitCell;
 import robotgame.model.cellobject.CellObject;
-import robotgame.model.cellobject.Key;
 import robotgame.model.cellobject.Robot;
 
 import javax.swing.*;
@@ -25,11 +25,10 @@ public class CellView extends JPanel {
     };
 
     private final Cell cell;
-    private final CellObjectView cellObjectView;
+    private CellObjectView cellObjectView;
 
     public CellView(Cell cell) {
         this.cell = cell;
-        cellObjectView = new CellObjectView(cell);
 
         setPreferredSize(new Dimension(CELL_SIZE, CELL_SIZE));
         setBackground(new Color(0, 0, 0, 0));
@@ -39,10 +38,16 @@ public class CellView extends JPanel {
     public void paint(Graphics g) {
         super.paint(g);
 
+        CellObject cellObject = cell.getContainedObject();
+        if (cellObjectView == null && cellObject != null
+                || cellObjectView != null && cellObjectView.cellObject != cellObject){
+            cellObjectView = getCellObjectView(cellObject);
+        }
+
         Graphics2D gr2d = (Graphics2D) g;
         drawHexagon(gr2d);
 
-        if (!cellObjectView.paint(gr2d) && cell instanceof ExitCell){
+        if ((cellObjectView == null || !cellObjectView.paint(gr2d)) && cell instanceof ExitCell){
             drawString(gr2d);
         }
     }
@@ -88,5 +93,16 @@ public class CellView extends JPanel {
 
     private Color getCellColor(){
         return cell instanceof ColoredCell ? ((ColoredCell)cell).getCurrentFootprint() : Color.white;
+    }
+
+    private CellObjectView getCellObjectView(CellObject cellObject){
+        if (cellObject instanceof Key){
+            return new KeyView(cellObject);
+        }
+        else if (cellObject instanceof Robot){
+            return new RobotView(cellObject);
+        }
+
+        return null;
     }
 }
