@@ -23,66 +23,9 @@ public class FinishGameRulesHandler {
             return;
         }
 
-        boolean haveNotIndependent = false;
-        boolean notIndependentComplete = true;
-        boolean notIndependentFail = false;
-
-        int independentCount = 0;
-        int failIndependentCount = 0;
-
-        for (RuleParameters parameters : gameRulesParameters) {
-            parameters.rule.updateGameState();
-
-            boolean isCompleteConditionsMet = parameters.rule.isCompleteConditionsMet();
-            boolean isFailConditionsMet = parameters.rule.isFailConditionsMet();
-
-            if (parameters.completeConditionsIsNegative){
-                isCompleteConditionsMet = !isCompleteConditionsMet;
-            }
-
-            if (parameters.ruleLinkType != RuleLinkType.OR){
-                haveNotIndependent = true;
-                notIndependentComplete &= isCompleteConditionsMet;
-
-                if (!parameters.completeConditionsIsNegative) {
-                    notIndependentFail |= isFailConditionsMet;
-                }
-            }
-            else {
-                if (isCompleteConditionsMet){
-                    setGameOver(true);
-                    return;
-                }
-
-                independentCount++;
-
-                if (!parameters.completeConditionsIsNegative && isFailConditionsMet){
-                    failIndependentCount++;
-                }
-            }
-        }
-
-        if (haveNotIndependent){
-            if (notIndependentComplete){
-                setGameOver(true);
-                return;
-            }
-
-            if (notIndependentFail){
-                if (independentCount == 0){
-                    setGameOver(false);
-                    return;
-                }
-
-                failIndependentCount++;
-            }
-
-            independentCount++;
-        }
-
-        if (independentCount == failIndependentCount){
-            setGameOver(false);
-        }
+        RulesInfo rulesInfo = new RulesInfo(gameRulesParameters);
+        handleGameStateResult(rulesInfo.updateRulesAndCountIndependent());
+        handleGameStateResult(rulesInfo.handleUpdatedRules());
     }
 
     public boolean isGameOver(){
@@ -93,9 +36,13 @@ public class FinishGameRulesHandler {
         return isPlayerWin;
     }
 
-    private void setGameOver(boolean isPlayerWin){
+    private void handleGameStateResult(GameStateResult gameStateResult){
+        if (gameStateResult == GameStateResult.None){
+            return;
+        }
+
         isGameOver = true;
-        this.isPlayerWin = isPlayerWin;
+        this.isPlayerWin = gameStateResult == GameStateResult.PlayerWin;
     }
 
     @Override
@@ -158,5 +105,92 @@ public class FinishGameRulesHandler {
         public String toStringRule(){
             return rule == null ? ruleFactory.create(null).toString() : rule.toString();
         }
+    }
+
+    private class RulesInfo {
+
+        private final List<RuleParameters> gameRulesParameters;
+
+        public boolean haveNotIndependent;
+        public boolean notIndependentComplete;
+        public boolean notIndependentFail;
+
+        public int independentCount;
+        public int failIndependentCount;
+
+        public RulesInfo(List<RuleParameters> gameRulesParameters) {
+            this.gameRulesParameters = gameRulesParameters;
+        }
+
+        public GameStateResult updateRulesAndCountIndependent(){
+            for (RuleParameters parameters : gameRulesParameters) {
+                parameters.rule.updateGameState();
+
+                boolean isCompleteConditionsMet = parameters.rule.isCompleteConditionsMet();
+                boolean isFailConditionsMet = parameters.rule.isFailConditionsMet();
+
+                if (parameters.completeConditionsIsNegative){
+                    isCompleteConditionsMet = !isCompleteConditionsMet;
+                }
+
+                if (parameters.ruleLinkType == RuleLinkType.AND){
+                    handleAndRule(parameters, isCompleteConditionsMet, isFailConditionsMet);
+                }
+                else {
+                    if (isCompleteConditionsMet){
+                        return GameStateResult.PlayerWin;
+                    }
+
+                    handleOrRule(parameters, isFailConditionsMet);
+                }
+            }
+
+            return GameStateResult.None;
+        }
+
+        private void handleAndRule(RuleParameters parameters, boolean isCompleteConditionsMet, boolean isFailConditionsMet){
+            haveNotIndependent = true;
+            notIndependentComplete &= isCompleteConditionsMet;
+
+            if (!parameters.completeConditionsIsNegative) {
+                notIndependentFail |= isFailConditionsMet;
+            }
+        }
+
+        private void handleOrRule(RuleParameters parameters, boolean isFailConditionsMet){
+            independentCount++;
+
+            if (!parameters.completeConditionsIsNegative && isFailConditionsMet){
+                failIndependentCount++;
+            }
+        }
+
+        public GameStateResult handleUpdatedRules(){
+            if (haveNotIndependent){
+                if (notIndependentComplete){
+                    return GameStateResult.PlayerWin;
+                }
+
+                if (notIndependentFail){
+                    if (independentCount == 0){
+                        return GameStateResult.PlayerLose;
+                    }
+
+                    failIndependentCount++;
+                }
+
+                independentCount++;
+            }
+
+            if (independentCount == failIndependentCount){
+                return GameStateResult.PlayerLose;
+            }
+
+            return GameStateResult.None;
+        }
+    }
+
+    private enum GameStateResult {
+        None, PlayerWin, PlayerLose
     }
 }
